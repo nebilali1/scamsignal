@@ -1,6 +1,7 @@
 import streamlit as st
 from detector import analyze
 from examples import EXAMPLES
+from timeline import analyze_timeline
 
 st.set_page_config(page_title='ScamSignal | Conversation Risk Review', page_icon='🛡️', layout='wide')
 st.markdown('''<style>
@@ -53,6 +54,24 @@ if run:
                     st.write('**What to do:**', f['next_step'])
         else:
             st.info('No configured patterns matched. Scams can still evade these checks. Independently verify unusual requests.')
+        st.divider()
+        st.subheader('Conversation timeline')
+        st.caption('For multiple messages, put each message on a separate line. Each line is screened independently.')
+        timeline = analyze_timeline(message)
+        if len(timeline['events']) > 1:
+            if timeline['first_warning'] is not None:
+                st.warning(f"First detected warning: message {timeline['first_warning']}")
+            else:
+                st.info('No configured warning patterns found in individual messages.')
+            for event in timeline['events']:
+                status = ', '.join(finding['label'] for finding in event['findings']) or 'No rule matched'
+                with st.expander(f"Message {event['number']} · {status}"):
+                    st.write(event['message'])
+                    if event['findings']:
+                        st.write('Matched warning signs:', status)
+        else:
+            st.caption('Tip: paste multiple messages on separate lines to see the timeline.')
+        st.caption('Note: suspicious patterns may depend on context across different messages.')
         st.caption('No conversations are written to a database by this app. Hosting providers may still process application traffic.')
 
 st.divider()
