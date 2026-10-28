@@ -6,6 +6,7 @@ ScamSignal is a privacy-minded Streamlit prototype that lets people paste a text
 
 ## What makes it useful
 - Interactive demo with four preset scenarios and custom text input
+- Conversation timeline identifying the first line with a detected warning
 - Pattern-by-pattern explanations, matched excerpts, and practical verification guidance
 - No API key and no database; works locally
 - Automated tests for key behavior
@@ -23,7 +24,7 @@ streamlit run app.py
 Test it with `python -m pytest -q`.
 
 ## Architecture
-`app.py` (user interface) → `detector.py` (regular-expression rule engine) → explanation and suggestions. `examples.py` holds four examples.
+`app.py` (user interface) → `detector.py` (regular-expression rule engine) and `timeline.py` (line-by-line screening) → explanation and suggestions. `examples.py` holds four examples.
 
 ## Responsible use
 This is not a fraud verdict or production-grade detection system. It can produce false positives or false negatives and shouldn't be used as the sole basis to block, accuse, or report a person. Avoid entering sensitive details. Messages are not intentionally stored by the app, but deployment infrastructure may log traffic.
