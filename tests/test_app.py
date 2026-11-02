@@ -1,9 +1,10 @@
 from streamlit.testing.v1 import AppTest
 from examples import EXAMPLES
+from pathlib import Path
 
 
 def app():
-    at = AppTest.from_file('app.py', default_timeout=30).run()
+    at = AppTest.from_file(Path(__file__).resolve().parents[1] / 'app.py', default_timeout=30).run()
     assert not at.exception
     return at
 
