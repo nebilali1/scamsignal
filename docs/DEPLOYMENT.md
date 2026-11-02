@@ -1,5 +1,13 @@
 # Deployment and smoke checks
 
+## Browser edition (recruiter demo)
+
+https://scamsignal-ai-nebil.recentcrown.chatgpt.site
+
+Build with `python -m scripts.build_web`. The generated `web/dist/index.html` is self-contained and can be hosted by any static host or opened as a local file. It uses the same trained weights as Python and makes no inference network requests. The published Site is public. The existing Streamlit host showed a startup error during this upgrade; its management controls require the owner to sign in. Use the browser link for the demonstration while diagnosing that host.
+
+## Preserved Streamlit deployment
+
 Existing deployment: https://scamsignal-cudqj7eqefjdkp8j2hvkyn.streamlit.app/
 
 The existing repository, `main` branch, and `app.py` entrypoint are retained. Runtime dependencies are pinned in `requirements.txt`; tests and lint tools are in `requirements-dev.txt`. Model serving uses only the Python standard library; scikit-learn and SciPy are training/test dependencies. The model artifact and evaluation are checked in, so launch requires no training or secrets.

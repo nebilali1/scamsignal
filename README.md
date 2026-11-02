@@ -2,11 +2,17 @@
 
 **See where the conversation turns.** An interactive investigation workspace that combines a trained text classifier with an explainable scam-rule engine.
 
-[**Try the live app →**](https://scamsignal-cudqj7eqefjdkp8j2hvkyn.streamlit.app/) · [Model card](docs/MODEL_CARD.md) · [Architecture](docs/ARCHITECTURE.md) · [30-second demo](docs/DEMO.md)
+[**Try the live browser demo →**](https://scamsignal-ai-nebil.recentcrown.chatgpt.site) · [Streamlit edition](https://scamsignal-cudqj7eqefjdkp8j2hvkyn.streamlit.app/) · [Model card](docs/MODEL_CARD.md) · [Architecture](docs/ARCHITECTURE.md) · [30-second demo](docs/DEMO.md)
 
 ![Tests](https://github.com/nebilali1/scamsignal/actions/workflows/tests.yml/badge.svg)
 
 > **Honest scope:** the ML model detects spam-like language, trained on labelled English SMS. The rules identify specific scam behaviours. Neither engine proves fraud or authenticates a sender. This is an engineered portfolio demonstration, not a validated production fraud service.
+
+## Screenshots
+
+![ScamSignal investigation dashboard](docs/screenshots/dashboard.jpg)
+
+![ScamSignal Model Lab](docs/screenshots/model-lab.jpg)
 
 ## Try it in one minute
 
@@ -25,7 +31,8 @@
 - **Separate evidence:** the rule index, ML spam score, and hybrid decision policy retain their own meanings. There is no invented blended probability.
 - **11 fictional scenarios:** scams, ordinary exchanges, safety advice, ambiguous payment requests, and a subtle impersonation that can evade both engines.
 - **Evaluation workspace:** held-out metrics, confusion matrix, class imbalance baseline, comparison of all engines, uncertainty interval, and limitations.
-- **Privacy-conscious design:** no external inference calls or message database; per-session state; clear control; text-free report export by default.
+- **Two deployment options:** the browser edition performs all analysis on-device; the preserved Streamlit app uses server-side session state. Both use the same trained weights and rule definitions.
+- **Privacy-conscious design:** no external inference calls or message database; clear control; text-free report export by default.
 - **Engineering checks:** unit and Streamlit application tests, reproducible split manifests and predictions, pinned direct dependencies, and GitHub Actions.
 
 ## Measured results
@@ -52,7 +59,17 @@ There are **7 false alarms and 7 missed spam messages**. Model F1 95% group-boot
 
 Full results: [evaluation.json](artifacts/evaluation.json) · [test predictions](artifacts/test_predictions.csv) · [split manifest](artifacts/split_manifest.csv). Scores are **not calibrated fraud probabilities**. Demo scenarios are not training or benchmark data.
 
-## Run locally
+## Run the browser edition
+
+The [published browser demo](https://scamsignal-ai-nebil.recentcrown.chatgpt.site) requires no account or API key. The self-contained [`web/dist/index.html`](web/dist/index.html) also opens directly in a modern browser, including offline after download. Its complete runtime is approximately 424 KB before HTTP compression, with no external libraries, fonts, scripts, or model-service calls.
+
+```bash
+python -m scripts.build_web
+```
+
+The build embeds the existing trained model, evaluation, rules, and scenarios. Source lives in `web/engine.mjs`, `web/app.js`, `web/style.css`, and `web/template.html`. **All 1,032 held-out scores match the Python model within 1e-12**, and every authored scenario matches Python rule severity and first-warning location. JavaScript uses Unicode-aware tokenisation; parity on this corpus is not a claim of identical behaviour for every possible Unicode input.
+
+## Run the preserved Streamlit app
 
 Python **3.11 or 3.12** is recommended.
 
@@ -74,7 +91,7 @@ python -m pytest -q
 python -m ruff check --select E9,F63,F7,F82,F401 .
 ```
 
-Tests exercise rule negation, exact offsets, sender parsing, input limits, HTML escaping, default export privacy, cumulative scoring, replay causality, model export parity, split leakage, metric consistency, all demo scenarios, and session persistence across navigation.
+**70 tests** pass, including cross-language parity and privacy checks. Node 22+ is needed for browser-engine checks; without Node those checks are explicitly skipped. Tests exercise rule negation, exact offsets, sender parsing, input limits, HTML escaping, default export privacy, cumulative scoring, replay causality, model export parity, split leakage, metric consistency, all demo scenarios, and session persistence across navigation.
 
 ## Reproduce training
 
@@ -82,6 +99,7 @@ The unmodified source corpus and its original readme are included in `data/raw/`
 
 ```bash
 python -m scripts.train_model
+python -m scripts.build_web
 python -m pytest -q
 ```
 
@@ -91,7 +109,7 @@ First install `python -m pip install -r requirements-training.txt` if you only i
 
 ```mermaid
 flowchart TD
-    A["Streamlit workspace · bounded text input"] --> B["Message parser"]
+    A["Browser or Streamlit workspace · bounded input"] --> B["Message parser"]
     B --> C["11 explainable rules"]
     B --> D["TF-IDF + logistic classifier"]
     C --> E["Hybrid triage policy"]
@@ -108,6 +126,8 @@ flowchart TD
 See [architecture and threat model](docs/ARCHITECTURE.md) and [initial audit](docs/INITIAL_AUDIT.md).
 
 ## Deployment
+
+**Recruiter link:** https://scamsignal-ai-nebil.recentcrown.chatgpt.site — the browser edition runs the actual trained model entirely on the visitor’s device. It was added because the existing Streamlit host showed a platform startup error after updating. The Streamlit application and its entrypoint are preserved.
 
 The existing Streamlit entrypoint remains **`app.py` on `main`**. Community Cloud normally rebuilds after the branch updates. If needed, open the app's management menu and reboot it. If the environment is older than Python 3.11, redeploy using Python 3.12 and the same repository/entrypoint. No secrets are required. See [deployment checks](docs/DEPLOYMENT.md).
 

@@ -8,7 +8,7 @@ Use this only after reviewing the code and making sure you can explain the work.
 
 ## Live sequence
 
-1. Open the deployed app before the conversation. Wake it if Community Cloud is asleep.
+1. Open https://scamsignal-ai-nebil.recentcrown.chatgpt.site before the conversation. This browser edition does not depend on Streamlit waking or installing packages. You can also open the downloaded web/dist/index.html offline.
 2. **Investigate → Fake job offer → Start.** The opening messages have no rule warning.
 3. **First signal.** Message 3 introduces an equipment fee. Point to the exact highlight and explanation.
 4. **Next message** twice. Payment-method and urgency evidence accumulate; the rule index increases without double-counting repeated rules.
@@ -33,4 +33,4 @@ The model learns which words and short phrases are associated with labelled spam
 
 **What would you improve next?** Independently labelled contemporary fraud conversations, external evaluation, calibration, robust paraphrase handling, and operational monitoring with an explicit privacy policy.
 
-**Where does the user's text go?** To the Streamlit server for inference. No external model API or message database is used. Session state retains it until cleared or expired; hosting infrastructure still processes traffic.
+**Where does the user's text go?** In the browser edition, inference happens on the visitor’s device and conversation text stays in memory in that tab. In the preserved Streamlit edition, text goes to its server and is held in session state. Neither app uses an external model API or message database. Hosting infrastructure still processes normal page traffic.

@@ -1,6 +1,14 @@
 # Architecture and trust boundaries
 
-## Runtime
+## Browser edition
+
+`web/engine.mjs` reproduces the trained word/bigram TF-IDF and logistic model in JavaScript. The build embeds the numeric model, evaluation, exported Python rule definitions, and authored scenarios into a single HTML file. Analysis uses only in-memory state, performs no network requests, and writes no localStorage, cookies, or message database. Clearing or closing the tab removes that in-memory conversation; downloaded reports remain on the device. Hosting still receives normal page requests.
+
+Cross-language tests compare every held-out score within 1e-12 and each demo’s rule severity/first warning against Python. Browser QA verified replay, benign examples, Model Lab, learned evidence, and the responsive layout at a 390-pixel viewport. JavaScript Unicode handling is not guaranteed identical for every possible string outside tested inputs.
+
+`python -m scripts.build_web` regenerates `web/dist/index.html`. Rebuild after changing model, rules, scenarios, evaluation, or web source; a test detects stale embedded artifacts. Static hosting deploys that build. The browser edition was added after the existing Streamlit deployment required owner-level diagnosis; it does not remove the original app.
+
+## Streamlit runtime
 
 A single Streamlit process serves the dashboard. The original `app.py` entrypoint, `detector.analyze`, and timeline APIs remain. There is no separate backend, external model provider, database, or account setup.
 
@@ -41,7 +49,7 @@ Rule evidence is exact regex text. ML evidence is `TF-IDF value × coefficient`,
 - Model artifacts are trusted repository numeric JSON, not executable pickle. Their hash is recorded and tested.
 - No chat contents are deliberately logged, saved, or sent to third-party inference APIs.
 - Default analysis export excludes messages, sender names, exact evidence, and learned terms. The user can explicitly include original text. The export covers the full submitted conversation, which the UI labels even during partial replay.
-- The provider handles network traffic and server-side inference. This is not end-to-end encryption, client-only processing, or a zero-retention infrastructure guarantee.
+- In the Streamlit edition, the provider handles network traffic and server-side inference. That edition does not provide client-only processing or a zero-retention infrastructure guarantee. The browser edition runs inference locally, as described above.
 - Streamlit usage telemetry is disabled in the checked-in configuration. Provider-level telemetry is outside the app's control.
 
 ## Tests and operations
