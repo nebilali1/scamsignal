@@ -108,6 +108,11 @@ with st.sidebar:
 if 'scenario' not in st.session_state:
     st.session_state.scenario = DEFAULT
     reset_demo()
+engine_signature = classifier.version if classifier else 'rules-only'
+if st.session_state.get('engine_signature') != engine_signature:
+    submitted = st.session_state.get('submitted', '')
+    st.session_state.result = analyze_timeline(submitted, classifier) if submitted else None
+    st.session_state.engine_signature = engine_signature
 if model_error:
     st.warning(model_error)
 
@@ -174,7 +179,8 @@ def investigation():
                 badges += '<span class="badge ml">ML SPAM FLAG</span>'
             rule_badges = ''.join(f'<span class="badge warn">{escape(f["label"])}</span>' for f in event['findings'])
             css_class = 'warning' if event['findings'] else 'you' if event['sender'].casefold() in ('you','seller') else ''
-            html(f'<div class="chat-row"><div class="chat-num">{number:02}</div><div class="bubble {css_class}"><div class="chat-meta"><strong>{escape(event["sender"])}</strong><span>MESSAGE {number:02}</span></div><div class="chat-body">{highlight(event["message"], event["findings"])}</div>{("<div style=\"margin-top:9px\">" + badges + rule_badges + "</div>") if badges or rule_badges else ""}</div></div>')
+            badges_html = f'<div style="margin-top:9px">{badges}{rule_badges}</div>' if badges or rule_badges else ''
+            html(f'<div class="chat-row"><div class="chat-num">{number:02}</div><div class="bubble {css_class}"><div class="chat-meta"><strong>{escape(event["sender"])}</strong><span>MESSAGE {number:02}</span></div><div class="chat-body">{highlight(event["message"], event["findings"])}</div>{badges_html}</div></div>')
         if step < len(result['events']):
             st.caption(f'{len(result["events"]) - step} messages hidden. Move the slider or select Next message to reveal more.')
         if scenario and st.session_state.submitted == scenario['text']:

@@ -85,7 +85,7 @@ python -m scripts.train_model
 python -m pytest -q
 ```
 
-This regenerates `artifacts/model.json.gz`, `evaluation.json`, `split_manifest.csv`, and `test_predictions.csv`. No network is required. The model hyperparameters are fixed; the declared validation threshold-selection rule is reproducible. Floating-point output or environment metadata can differ across library/Python versions. The tests check inference and metrics within numeric tolerances.
+First install `python -m pip install -r requirements-training.txt` if you only installed the app dependencies. This regenerates `artifacts/model.json.gz`, `evaluation.json`, `split_manifest.csv`, and `test_predictions.csv`. No network is required. The model hyperparameters are fixed; the declared validation threshold-selection rule is reproducible. Floating-point output or environment metadata can differ across library/Python versions. The tests check inference and metrics within numeric tolerances.
 
 ## Architecture
 
@@ -103,7 +103,7 @@ flowchart TD
     I --> J["Model Lab"]
 ```
 
-`app.py` handles UI and per-session state. `detector.py` preserves the original `analyze()` API, extending it with stable IDs and evidence spans. `timeline.py` preserves the original splitting API and adds sender parsing, prefix-safe replay, and independent ML results. `ml.py` loads numeric JSON data without pickle. `presentation.py` escapes untrusted text and builds reports. `scripts/train_model.py` owns the reproducible experiment.
+`app.py` handles UI and per-session state. `detector.py` preserves the original `analyze()` API, extending it with stable IDs and evidence spans. `timeline.py` preserves the original splitting API and adds sender parsing, prefix-safe replay, and independent ML results. `ml.py` reproduces trained TF-IDF and logistic inference with Python’s standard library, loading numeric JSON without pickle or scientific-library imports. `presentation.py` escapes untrusted text and builds reports. `scripts/train_model.py` owns the reproducible experiment.
 
 See [architecture and threat model](docs/ARCHITECTURE.md) and [initial audit](docs/INITIAL_AUDIT.md).
 

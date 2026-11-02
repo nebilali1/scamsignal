@@ -1,54 +1,78 @@
-"""JSON-only TF-IDF + logistic model; no pickle, API, or network at inference."""
+"""Portable TF-IDF + logistic inference from numeric JSON.
+
+Training uses scikit-learn. Serving reproduces its word/bigram TF-IDF and linear
+model with the standard library; there is no pickle, external API, or runtime
+scientific-library dependency. Tests check every held-out score for parity.
+"""
+from collections import Counter
 import gzip
 import json
+import math
 from pathlib import Path
-import numpy as np
-from scipy.special import expit
-from sklearn.feature_extraction.text import TfidfVectorizer
+import re
+import unicodedata
 
-MODEL_PATH = Path(__file__).parent / "artifacts/model.json.gz"
+MODEL_PATH = Path(__file__).parent / 'artifacts/model.json.gz'
+TOKENS = re.compile(r'(?u)\b\w\w+\b')
+
+
+def sigmoid(value: float) -> float:
+    if value >= 0:
+        return 1.0 / (1.0 + math.exp(-value))
+    exp_value = math.exp(value)
+    return exp_value / (1.0 + exp_value)
 
 
 class TextClassifier:
     def __init__(self, path: Path = MODEL_PATH):
-        with gzip.open(path, "rt", encoding="utf-8") as f:
+        with gzip.open(path, 'rt', encoding='utf-8') as f:
             bundle = json.load(f)
-        if bundle.get("schema_version") != 1:
-            raise ValueError("Unsupported model artifact schema")
-        self.version = bundle["model_version"]
-        self.threshold = float(bundle["threshold"])
-        self.features = np.array(bundle["features"])
-        self.vectorizer = TfidfVectorizer(
-            vocabulary={word: i for i, word in enumerate(bundle["features"])},
-            ngram_range=(1, 2), lowercase=True, sublinear_tf=True,
-            strip_accents="unicode", token_pattern=r"(?u)\b\w\w+\b")
-        self.vectorizer.idf_ = np.asarray(bundle["idf"], dtype=float)
-        self.coef = np.asarray(bundle["coefficients"], dtype=float)
-        self.intercept = float(bundle["intercept"])
-        if len(self.coef) != len(self.features) or not np.isfinite(self.coef).all():
-            raise ValueError("Invalid model coefficients")
+        if bundle.get('schema_version') != 1:
+            raise ValueError('Unsupported model artifact schema')
+        self.version = bundle['model_version']
+        self.threshold = float(bundle['threshold'])
+        self.features = bundle['features']
+        self.vocabulary = {word:i for i,word in enumerate(self.features)}
+        self.idf = [float(v) for v in bundle['idf']]
+        self.coef = [float(v) for v in bundle['coefficients']]
+        self.intercept = float(bundle['intercept'])
+        if (not self.features or len(self.coef) != len(self.features) or len(self.idf) != len(self.features)
+                or len(self.vocabulary) != len(self.features) or not 0 < self.threshold < 1
+                or not all(math.isfinite(v) for v in self.coef + self.idf + [self.intercept])
+                or not all(v > 0 for v in self.idf)):
+            raise ValueError('Invalid numeric model artifact')
+
+    def vectorize(self, text: str) -> list[tuple[int, float]]:
+        """Equivalent to the fitted sklearn vectorizer's L2-normalised output."""
+        normal = unicodedata.normalize('NFKD', text.lower())
+        normal = ''.join(c for c in normal if not unicodedata.combining(c))
+        words = TOKENS.findall(normal)
+        terms = words + [' '.join(pair) for pair in zip(words, words[1:])]
+        counts = Counter(self.vocabulary[t] for t in terms if t in self.vocabulary)
+        weighted = [(i, (1.0 + math.log(count)) * self.idf[i]) for i,count in sorted(counts.items())]
+        norm = math.sqrt(sum(value * value for _,value in weighted))
+        return [(i, value / norm) for i,value in weighted] if norm else []
+
+    def raw_score(self, text: str) -> float:
+        """Unconditional numerical score for reproducibility, including the prior."""
+        return sigmoid(sum(value * self.coef[i] for i,value in self.vectorize(text)) + self.intercept)
 
     def predict_many(self, texts: list[str]) -> list[dict]:
-        if not texts:
-            return []
-        matrix = self.vectorizer.transform(texts)
-        scores = expit(np.asarray(matrix @ self.coef).ravel() + self.intercept)
         results = []
-        for i, score in enumerate(scores):
-            row = matrix.getrow(i)
-            contributions = row.data * self.coef[row.indices]
-            order = np.argsort(np.abs(contributions))[::-1][:8]
-            # Exact additive log-odds terms, not causal claims.
-            terms = [{"term": str(self.features[row.indices[j]]),
-                      "contribution": float(contributions[j]),
-                      "direction": "spam" if contributions[j] > 0 else "ham"}
-                     for j in order if abs(contributions[j]) > .015]
-            available = bool(row.nnz) and bool(texts[i].strip())
-            results.append({"score": float(score) if available else None,
-                            "flag": bool(score >= self.threshold) if available else None,
-                            "label": ("Spam-like" if score >= self.threshold else "Ham-like") if available else "Insufficient vocabulary",
-                            "threshold": self.threshold, "terms": terms,
-                            "known_features": int(row.nnz), "version": self.version})
+        for text in texts:
+            vector = self.vectorize(text)
+            contributions = [(i, value * self.coef[i]) for i,value in vector]
+            score = sigmoid(sum(value for _,value in contributions) + self.intercept)
+            strongest = sorted(contributions, key=lambda p:abs(p[1]), reverse=True)[:8]
+            terms = [{'term': self.features[i], 'contribution': value,
+                      'direction': 'spam' if value > 0 else 'ham'}
+                     for i,value in strongest if abs(value) > .015]
+            available = bool(vector) and bool(text.strip())
+            results.append({'score': score if available else None,
+                            'flag': score >= self.threshold if available else None,
+                            'label': ('Spam-like' if score >= self.threshold else 'Ham-like') if available else 'Insufficient vocabulary',
+                            'threshold': self.threshold, 'terms': terms,
+                            'known_features': len(vector), 'version': self.version})
         return results
 
     def predict(self, text: str) -> dict:

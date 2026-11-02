@@ -66,3 +66,22 @@ def test_validation_explorer_does_not_change_classifier():
     assert not at.exception
     at.radio(key='page').set_value('Investigate').run()
     assert at.session_state.result['events'][0]['model']['threshold'] == .49
+
+
+def test_missing_model_still_renders_rules(monkeypatch):
+    import ml
+    import streamlit as st
+    st.cache_resource.clear()
+    def unavailable():
+        raise OSError('Test model unavailable')
+    monkeypatch.setattr(ml,'TextClassifier',unavailable)
+    try:
+        at=app()
+        assert any('artifact is unavailable' in w.value for w in at.warning)
+        assert at.session_state.result['score'] == 83
+        assert at.session_state.result['peak_model_score'] is None
+        assert at.session_state.engine_signature == 'rules-only'
+        at.radio(key='page').set_value('Model lab').run()
+        assert not at.exception
+    finally:
+        st.cache_resource.clear()

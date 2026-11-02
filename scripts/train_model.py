@@ -128,14 +128,13 @@ def main():
     # Check exported inference against the fitted estimator on every test record.
     from ml import TextClassifier
     exported = TextClassifier(out / 'model.json.gz')
-    from scipy.special import expit
-    export_matrix = exported.vectorizer.transform(texts[test])
-    export_scores = expit(np.asarray(export_matrix @ exported.coef).ravel() + exported.intercept)
-    assert np.allclose(export_scores, test_scores, atol=1e-12)
-    abstentions = int(sum(export_matrix.getnnz(axis=1) == 0))
+    from ml import sigmoid
+    export_scores = np.array([exported.raw_score(t) for t in texts[test]])
+    assert np.allclose(export_scores, test_scores, atol=1e-12, rtol=0)
+    abstentions = sum(not exported.vectorize(t) for t in texts[test])
     # Zero-vocabulary inputs are shown as unavailable by the app. They generate
     # no ML alert, equivalent to the below-threshold prior in this artifact.
-    assert float(expit(exported.intercept)) < threshold
+    assert sigmoid(exported.intercept) < threshold
     with (out / 'test_predictions.csv').open('w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['id', 'label', 'model_score', 'rule_score'])

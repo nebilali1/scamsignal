@@ -2,7 +2,7 @@
 
 Existing deployment: https://scamsignal-cudqj7eqefjdkp8j2hvkyn.streamlit.app/
 
-The existing repository, `main` branch, and `app.py` entrypoint are retained. Runtime dependencies are pinned in `requirements.txt`; tests and lint tools are in `requirements-dev.txt`. The model artifact and evaluation are checked in, so launch requires no training or secrets.
+The existing repository, `main` branch, and `app.py` entrypoint are retained. Runtime dependencies are pinned in `requirements.txt`; tests and lint tools are in `requirements-dev.txt`. Model serving uses only the Python standard library; scikit-learn and SciPy are training/test dependencies. The model artifact and evaluation are checked in, so launch requires no training or secrets.
 
 ## Streamlit Community Cloud
 

@@ -33,7 +33,7 @@ An explainable **SMS spam classifier** within ScamSignal's scam-screening demons
 
 `TfidfVectorizer(ngram_range=(1,2), min_df=2, max_features=16000, sublinear_tf=True, strip_accents='unicode')` yields 7,369 features. Lowercased words of at least two characters are tokens. L2 normalisation and smoothed IDF use sklearn defaults. `LogisticRegression(C=6, class_weight='balanced', solver='liblinear', max_iter=1000, random_state=42)` fits the classifier. Hyperparameters are fixed, not test-selected.
 
-The artifact contains vocabulary, IDF values, coefficients, intercept, schema/model version, and threshold as compressed JSON. Inference reconstructs the same vectorizer and computes `sigmoid(x @ coefficients + intercept)`. No pickle or joblib deserialisation is used. Training checks numerical export parity on all test inputs, and tests independently reproduce committed predictions.
+The artifact contains vocabulary, IDF values, coefficients, intercept, schema/model version, and threshold as compressed JSON. Standard-library inference reproduces Unicode preprocessing, word/bigram tokenisation, sublinear term frequency, IDF weighting, and L2 normalisation, then computes `sigmoid(x @ coefficients + intercept)`. No pickle or joblib deserialisation is used. Training checks numerical export parity on all test inputs, and tests independently reproduce committed predictions.
 
 For vocabulary-free input the app abstains (`score=None`, `flag=None`) rather than showing a confident-looking prior. One held-out message meets this condition. It contributes no alert in benchmark confusion matrices; the model's numerical prior lies below the selected threshold. No calibrated fraud probability is claimed. Class weighting and deployment distribution shift limit score interpretation.
 
@@ -60,4 +60,4 @@ The rules only alert at severity ≥55; none of this test corpus reaches that th
 
 ## Reproduction and maintenance
 
-Run `python -m scripts.train_model` from the repository root using the pinned dependencies. Source and outputs are committed. The script validates source integrity and writes environment versions into `evaluation.json`. Re-evaluate with independently collected, contemporary, licensed fraud conversations before making any deployment-performance claim. Do not silently relabel spam scores as fraud probabilities.
+Install `requirements-training.txt` (or `requirements-dev.txt`), then run `python -m scripts.train_model` from the repository root using the pinned dependencies. Source and outputs are committed. The script validates source integrity and writes environment versions into `evaluation.json`. Re-evaluate with independently collected, contemporary, licensed fraud conversations before making any deployment-performance claim. Do not silently relabel spam scores as fraud probabilities.

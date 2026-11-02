@@ -5,7 +5,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.special import expit
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 from ml import TextClassifier
 from scripts.train_model import load_records, make_splits
@@ -40,12 +39,11 @@ def test_batch_and_single_match(model):
 
 def test_linear_explanation_matches_model(model):
     text = 'Claim your free prize now'
-    row = model.vectorizer.transform([text]).getrow(0)
-    score = float(expit(row @ model.coef + model.intercept)[0])
-    assert model.predict(text)['score'] == pytest.approx(score, abs=1e-12)
+    row = dict(model.vectorize(text))
+    assert model.predict(text)['score'] == pytest.approx(model.raw_score(text), abs=1e-12)
     for term in model.predict(text)['terms']:
-        i = model.vectorizer.vocabulary_[term['term']]
-        assert term['contribution'] == pytest.approx(row[0,i] * model.coef[i])
+        i = model.vocabulary[term['term']]
+        assert term['contribution'] == pytest.approx(row[i] * model.coef[i])
 
 
 def test_artifact_checksum_and_schema():
@@ -81,8 +79,8 @@ def test_all_held_out_predictions_reproduce(model):
     by_id = {r['id']:r for r in records}
     frame = pd.read_csv(ROOT/'artifacts/test_predictions.csv')
     texts = [by_id[i]['text'] for i in frame.id]
-    raw = expit(np.asarray(model.vectorizer.transform(texts) @ model.coef).ravel() + model.intercept)
-    assert np.allclose(raw,frame.model_score,atol=1e-12)
+    raw = np.array([model.raw_score(t) for t in texts])
+    assert np.allclose(raw,frame.model_score,atol=1e-12, rtol=0)
 
 
 def test_validation_threshold_matches_declared_selection():
@@ -90,3 +88,25 @@ def test_validation_threshold_matches_declared_selection():
     eligible = [x for x in report['validation_thresholds'] if x['precision'] >= .95]
     chosen = max(eligible,key=lambda x:(x['f1'],x['precision'],x['threshold']))
     assert report['threshold'] == chosen['threshold']
+
+
+def test_portable_vectorizer_matches_sklearn_on_unicode_and_repetitions(model):
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    reference = TfidfVectorizer(vocabulary=model.vocabulary,ngram_range=(1,2),sublinear_tf=True,strip_accents='unicode')
+    reference.idf_ = np.array(model.idf)
+    for text in ['FREE free FREE prize!!', 'Café résumé verification code', 'Hi 👋, confirm your account.', '١٢٣ 123 CASH now', 'Never share your password, but send me your code.']:
+        row = reference.transform([text]).getrow(0)
+        expected = dict(zip(row.indices,row.data))
+        actual = dict(model.vectorize(text))
+        assert actual.keys() == expected.keys()
+        for i in expected:
+            assert actual[i] == pytest.approx(expected[i],abs=1e-12)
+
+
+def test_corrupt_model_fails_clearly(tmp_path):
+    bundle = {'schema_version':1,'model_version':'broken','threshold':.5,'features':['foo'],'idf':[1.0],'coefficients':[float('nan')],'intercept':0}
+    path = tmp_path/'broken.json.gz'
+    with gzip.open(path,'wt') as f:
+        json.dump(bundle,f)
+    with pytest.raises(ValueError,match='Invalid numeric'):
+        TextClassifier(path)
